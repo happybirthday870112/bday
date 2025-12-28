@@ -3,653 +3,649 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Yoshi's Ultimate Birthday Quest</title>
+    <title>Yoshi's Birthday Party</title>
     <style>
-        :root {
-            --yoshi-green: #4CAF50;
-            --yoshi-light-green: #81C784;
-            --yoshi-red: #F44336;
-            --yoshi-orange: #FF9800;
-            --yoshi-white: #FFF;
-            --bg-sky: linear-gradient(to bottom, #87CEEB, #E0F6FF);
-        }
-
+        /* --- 基礎設定 --- */
         body {
             margin: 0;
-            overflow: hidden;
-            font-family: 'Arial Black', sans-serif;
+            padding: 0;
             background-color: #333;
-            touch-action: none;
+            font-family: 'Arial Rounded MT Bold', 'Arial', sans-serif;
+            overflow: hidden; /* 禁止網頁捲動 */
+            touch-action: none; /* 禁止手機預設觸控行為 */
+            user-select: none; /* 禁止長按選取文字(消除藍色框) */
+            -webkit-user-select: none;
             display: flex;
             justify-content: center;
+            align-items: center;
             height: 100vh;
         }
 
-        #game-container {
+        #game-stage {
             position: relative;
             width: 100%;
-            max-width: 500px;
             height: 100%;
-            background: var(--bg-sky);
+            max-width: 480px; /* 手機直式比例 */
+            background: linear-gradient(to bottom, #87CEEB 0%, #E0F7FA 100%);
             overflow: hidden;
-            box-shadow: 0 0 30px rgba(0,0,0,0.5);
+            box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
 
-        /* --- UI Layers --- */
-        .ui-layer {
+        /* --- UI 介面 --- */
+        .ui-screen {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(255, 255, 255, 0.95);
             display: flex; flex-direction: column;
             justify-content: center; align-items: center;
-            background: rgba(255,255,255,0.95);
-            z-index: 100; transition: opacity 0.3s;
-            text-align: center; padding: 20px; box-sizing: border-box;
+            z-index: 1000;
+            text-align: center;
+            transition: opacity 0.3s;
         }
-        .hidden { opacity: 0; pointer-events: none; }
-        h1 { color: var(--yoshi-green); margin: 0 0 15px 0; font-size: 28px; text-shadow: 2px 2px #ddd; }
-        p { font-size: 18px; color: #555; margin-bottom: 30px; }
-        .btn {
-            background: var(--yoshi-green); color: white; border: none;
-            padding: 15px 40px; font-size: 22px; border-radius: 50px;
-            cursor: pointer; box-shadow: 0 6px #2E7D32; transition: transform 0.1s;
-            font-family: 'Arial Black', sans-serif;
-        }
-        .btn:active { transform: translateY(6px); box-shadow: none; }
-
-        /* Progress Eggs */
-        .egg-dash { display: flex; gap: 10px; margin-bottom: 30px; }
-        .egg-slot {
-            width: 40px; height: 50px; background: #ddd; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
-            display: flex; justify-content: center; align-items: center; font-size: 24px; color: transparent;
-            border: 3px solid #bbb; transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        .egg-slot.collected {
-            background: var(--yoshi-white); border-color: var(--yoshi-green); color: var(--yoshi-green);
-            transform: scale(1.1); box-shadow: 0 0 15px var(--yoshi-green);
-        }
-        .egg-slot.collected::after { content: '●'; color: var(--yoshi-green); font-size: 18px; position: absolute; top: 10px; left: 8px; }
-
-        /* --- 專業版 CSS 幾何耀西 (可動態化) --- */
-        .yoshi-wrap { position: absolute; width: 60px; height: 80px; z-index: 50; pointer-events: none; will-change: transform, left, top;}
-        .yoshi-body-group { position: relative; width: 100%; height: 100%; }
-        .y-head { position: absolute; width: 40px; height: 40px; background: var(--yoshi-green); border-radius: 50%; top: 0; left: 10px; z-index: 2; }
-        .y-nose { position: absolute; width: 36px; height: 30px; background: var(--yoshi-green); border-radius: 50%; top: 10px; left: -10px; z-index: 2; }
-        .y-cheek { position: absolute; width: 20px; height: 18px; background: var(--yoshi-white); border-radius: 50%; top: 25px; left: 5px; z-index: 3; }
-        .y-body { position: absolute; width: 30px; height: 35px; background: var(--yoshi-green); border-radius: 40% 40% 50% 50%; top: 35px; left: 15px; z-index: 1; }
-        .y-shell { position: absolute; width: 20px; height: 25px; background: var(--yoshi-red); border-radius: 50%; top: 40px; left: 5px; z-index: 0; border: 2px solid white;}
-        .y-boot-l, .y-boot-r { position: absolute; width: 22px; height: 16px; background: var(--yoshi-orange); border-radius: 10px; bottom: 0; z-index: 1; }
-        .y-boot-l { left: 5px; } .y-boot-r { right: 5px; }
-        .y-eye { position: absolute; width: 8px; height: 10px; background: white; border-radius: 50%; top: 5px; left: 28px; z-index: 4;}
-        .y-eye::after { content:''; position: absolute; width: 4px; height: 4px; background: black; border-radius: 50%; top:3px; left:2px;}
-
-        /* 動畫狀態 class */
-        .yoshi-wrap.running .y-body { animation: runBody 0.3s infinite alternate; }
-        .yoshi-wrap.running .y-boot-l { animation: runLeft 0.3s infinite alternate; }
-        .yoshi-wrap.running .y-boot-r { animation: runRight 0.3s infinite alternate; }
-        @keyframes runBody { from { transform: translateY(0); } to { transform: translateY(-3px); } }
-        @keyframes runLeft { from { transform: translateX(0); } to { transform: translateX(-5px) translateY(-2px); } }
-        @keyframes runRight { from { transform: translateX(0); } to { transform: translateX(5px) translateY(2px); } }
-        .yoshi-wrap.jumping .yoshi-body-group { transform: rotate(-15deg) scale(1.05); transition: transform 0.1s; }
+        .hidden { display: none !important; }
         
-        /* --- 遊戲物件 --- */
-        .game-obj { position: absolute; will-change: transform, left, top; }
+        h1 { color: #4CAF50; font-size: 24px; margin: 10px; text-shadow: 1px 1px 0 #fff; }
+        p { color: #555; font-size: 16px; margin: 10px 30px; line-height: 1.6; }
+        
+        .btn {
+            background: #ff9800; color: white; border: none;
+            padding: 12px 40px; font-size: 20px; border-radius: 50px;
+            cursor: pointer; box-shadow: 0 4px #e65100; margin-top: 20px;
+            font-weight: bold;
+        }
+        .btn:active { transform: translateY(2px); box-shadow: 0 2px #e65100; }
 
-        /* G1: Pipes */
-        .pipe { width: 60px; background: linear-gradient(to right, #50AA54, #388E3C, #50AA54); border: 3px solid #2E7D32; bottom: 0; }
-        .pipe-cap { position: absolute; top: -20px; left: -5px; width: 70px; height: 20px; background: inherit; border: inherit; }
+        /* 進度條 */
+        .progress-bar { display: flex; gap: 8px; margin-bottom: 20px; }
+        .egg-icon { 
+            width: 30px; height: 35px; 
+            background-image: url('https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Yoshi_Egg.svg/1200px-Yoshi_Egg.svg.png');
+            background-size: contain; background-repeat: no-repeat; background-position: center;
+            filter: grayscale(100%); opacity: 0.3; transition: all 0.5s;
+        }
+        .egg-icon.active { filter: grayscale(0%); opacity: 1; transform: scale(1.2); }
 
-        /* G2: Items */
-        .melon { width: 35px; height: 35px; background: #90EE90; border-radius: 50%; border: 2px solid #2E8B57; overflow: hidden; box-shadow: 2px 2px 5px rgba(0,0,0,0.2);}
-        .melon::after, .melon::before { content:''; position:absolute; background:#2E8B57; opacity: 0.6;}
-        .melon::after { width:100%; height:2px; top:50%; } .melon::before { height:100%; width:2px; left:50%; }
-        .bomb { width: 35px; height: 35px; background: #333; border-radius: 50%; animation: pulseBomb 0.5s infinite alternate; }
-        .bomb::after { content:'☠️'; font-size: 20px; position: absolute; top: 5px; left: 7px; }
-        @keyframes pulseBomb { from { transform: scale(1); } to { transform: scale(1.1); background: #555; } }
-
-        /* G3: Tongue & Shy Guy */
-        .shy-guy { width: 50px; height: 50px; background: #F44336; border-radius: 10px; border-bottom: 5px solid #D32F2F; cursor: pointer;}
-        .shy-guy-face { position: absolute; width: 40px; height: 35px; background: white; border-radius: 50%; top: 5px; left: 5px; }
-        .shy-guy-face::after { content:'••'; color: black; font-size: 30px; position: absolute; top: -5px; left: 8px; letter-spacing: 5px;}
-        .tongue-lash {
-            position: absolute; height: 12px; background: #FF69B4; border-radius: 6px;
-            transform-origin: left center; z-index: 40; pointer-events: none;
-            box-shadow: 2px 2px 0px #C2185B;
+        /* --- 遊戲物件通用設定 --- */
+        .sprite {
+            position: absolute;
+            background-size: contain;
+            background-repeat: no-repeat;
+            background-position: center;
+            pointer-events: none; /* 讓點擊穿透，由 JS 處理邏輯 */
+            z-index: 10; /* 確保在最上層 */
+        }
+        
+        /* 針對特定遊戲的修正 */
+        #ground {
+            position: absolute; bottom: 0; width: 100%; height: 40px;
+            background: #5D4037; border-top: 5px solid #4CAF50; z-index: 5;
         }
 
-        /* G4: Egg Crack */
-        .big-egg-wrap { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 150px; height: 200px; cursor: pointer; }
-        .big-egg-base {
-            width: 100%; height: 100%; background: var(--yoshi-white);
-            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; border: 8px solid var(--yoshi-green);
-            position: relative; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        /* G3 舌頭 */
+        .tongue-line {
+            position: absolute; height: 10px; background: #FF4081;
+            border-radius: 5px; transform-origin: left center; z-index: 9;
         }
-        .egg-spot { position: absolute; background: var(--yoshi-green); border-radius: 50%; }
-        .egg-crack { position: absolute; width: 100%; height: 100%; top:0; left:0; opacity: 0; pointer-events: none;}
-        .egg-crack path { fill: none; stroke: #333; stroke-width: 3; stroke-linecap: round; }
-        .shaking { animation: shakeEgg 0.5s linear infinite; }
-        @keyframes shakeEgg { 0% { transform: translate(2px, 1px) rotate(0deg); } 10% { transform: translate(-1px, -2px) rotate(-1deg); } 20% { transform: translate(-3px, 0px) rotate(1deg); } 30% { transform: translate(0px, 2px) rotate(0deg); } 40% { transform: translate(1px, -1px) rotate(1deg); } 50% { transform: translate(-1px, 2px) rotate(-1deg); } 60% { transform: translate(-3px, 1px) rotate(0deg); } 70% { transform: translate(2px, 1px) rotate(-1deg); } 80% { transform: translate(-1px, -1px) rotate(1deg); } 90% { transform: translate(2px, 2px) rotate(0deg); } 100% { transform: translate(1px, -2px) rotate(-1deg); } }
-        .yoshi-pop { animation: popUp 1s forwards cubic-bezier(0.68, -0.55, 0.265, 1.55); }
-        @keyframes popUp { 0% { transform: translate(-50%, 50%) scale(0); } 80% { transform: translate(-50%, -120%) scale(1.2); } 100% { transform: translate(-50%, -100%) scale(1); } }
 
-        /* G5: Baskets */
-        .basket {
-            position: absolute; bottom: 30px; width: 120px; height: 80px;
-            background: repeating-linear-gradient(45deg, #8B4513, #8B4513 10px, #A0522D 10px, #A0522D 20px);
-            border-radius: 5px 5px 20px 20px; border: 5px solid #5D4037;
-            display: flex; justify-content: center; align-items: flex-end; padding-bottom: 10px;
-            color: white; font-weight: bold; text-shadow: 1px 1px 2px black;
+        /* G6 終點線 */
+        .finish-line {
+            position: absolute; top: 80px; width: 100%; height: 10px;
+            background: repeating-linear-gradient(to right, white, white 20px, black 20px, black 40px);
+            z-index: 4;
         }
-        .basket::before { content:''; position: absolute; top: -20px; left: 10%; width: 80%; height: 40px; border: 5px solid #5D4037; border-bottom: none; border-radius: 20px 20px 0 0; }
-        .basket.red { left: 20px; border-color: var(--yoshi-red); }
-        .basket.green { right: 20px; border-color: var(--yoshi-green); }
-        .dragging { opacity: 0.8; transform: scale(1.1) rotate(5deg); transition: none !important; }
 
-        /* G6: Bowser */
-        .bowser-wrap { position: absolute; top: 30px; right: 20px; width: 100px; height: 100px; transition: transform 0.3s; }
-        .bowser-body { width: 80%; height: 70%; background: #FFC107; border-radius: 20px; border: 4px solid #333; position: absolute; bottom: 0; left: 10%; }
-        .bowser-shell { width: 90%; height: 80%; background: #388E3C; border-radius: 50%; position: absolute; top: 10%; left: 5%; z-index: -1; border: 4px solid #333; }
-        .bowser-head { width: 50px; height: 50px; background: #FFC107; border-radius: 30% 30% 50% 50%; position: absolute; top: -20px; left: 25px; border: 4px solid #333; }
-        .bowser-horn { width: 0; height: 0; border-left: 10px solid transparent; border-right: 10px solid transparent; border-bottom: 20px solid #FFF; position: absolute; top: -15px; }
-        .horn-l { left: 5px; } .horn-r { right: 5px; }
-        .bowser-wrap.looking { transform: rotateY(180deg); }
-        .finish-line { position: absolute; top: 130px; width: 100%; height: 10px; background: repeating-linear-gradient(to right, white, white 20px, black 20px, black 40px); }
-
-        /* --- Cake Scene --- */
-        #cake-scene { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; background: #FFF0F5; animation: fadeIn 1s; }
-        .final-cake { position: relative; margin-top: 50px; }
-        .cake-tier { width: 200px; height: 120px; background: white; border-radius: 10px; border: 5px solid #eee; position: relative; overflow: hidden; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
-        .cake-spot { position: absolute; width: 25px; height: 25px; background: var(--yoshi-green); border-radius: 50%; }
-        .candle-final { width: 15px; height: 50px; background: repeating-linear-gradient(45deg, red, red 5px, white 5px, white 10px); position: absolute; top: -50px; left: 92.5px; }
-        .flame-final { width: 15px; height: 20px; background: orange; border-radius: 50% 50% 20% 20%; position: absolute; top: -20px; animation: flicker 0.5s infinite alternate; box-shadow: 0 0 10px orange; }
-        @keyframes flicker { from {transform:scale(1); opacity:1;} to {transform:scale(1.2); opacity:0.8;} }
-        .jp-msg { font-size: 32px; color: #E91E63; font-weight: bold; margin-top: 40px; text-shadow: 2px 2px white; animation: popIn Text 1s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popInText { from {transform:scale(0);} to {transform:scale(1);} }
-        @keyframes fadeIn { from {opacity:0;} to {opacity:1;} }
+        /* 蛋糕頁面 */
+        .cake-container {
+            width: 100%; height: 100%; display: flex; flex-direction: column;
+            justify-content: center; align-items: center; background: #FFF3E0;
+        }
+        .final-msg {
+            font-size: 28px; color: #E91E63; font-weight: bold; margin-top: 20px;
+            animation: bounce 2s infinite;
+        }
+        @keyframes bounce { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
 
     </style>
 </head>
 <body>
-    <div id="game-container">
-        <div id="game-canvas"></div>
 
-        <div id="ui-main" class="ui-layer">
+    <div id="game-stage">
+        <div id="game-layer" style="width:100%; height:100%; position:relative;"></div>
+
+        <div id="ui-layer" class="ui-screen">
             <h1 id="ui-title">載入中...</h1>
-            <div id="egg-dash" class="egg-dash hidden">
-                <div class="egg-slot" id="slot-1"></div>
-                <div class="egg-slot" id="slot-2"></div>
-                <div class="egg-slot" id="slot-3"></div>
-                <div class="egg-slot" id="slot-4"></div>
-                <div class="egg-slot" id="slot-5"></div>
-                <div class="egg-slot" id="slot-6"></div>
+            <div id="progress-area" class="progress-bar hidden">
+                <div class="egg-icon" id="egg-1"></div>
+                <div class="egg-icon" id="egg-2"></div>
+                <div class="egg-icon" id="egg-3"></div>
+                <div class="egg-icon" id="egg-4"></div>
+                <div class="egg-icon" id="egg-5"></div>
+                <div class="egg-icon" id="egg-6"></div>
             </div>
-            <p id="ui-desc">...</p>
-            <button id="ui-btn" class="btn">開始</button>
+            <p id="ui-desc">正在準備派對...</p>
+            <button id="ui-btn" class="btn">開始遊戲</button>
         </div>
     </div>
 
     <script>
-        // --- 全域變數與設定 ---
+        // --- 圖片素材庫 (可替換網址) ---
+        // 使用網路上較穩定的 Wiki 圖片資源
+        const ASSETS = {
+            yoshi: "https://upload.wikimedia.org/wikipedia/en/3/39/YoshiMarioParty10.png", // 站立
+            yoshiRun: "https://mario.wiki.gallery/images/thumb/a/a2/Yoshi_-_Mario_Party_10.png/260px-Yoshi_-_Mario_Party_10.png", // 跑步/動作
+            melon: "https://mario.wiki.gallery/images/thumb/d/db/Melon_Yoshi_Story.png/120px-Melon_Yoshi_Story.png",
+            bomb: "https://mario.wiki.gallery/images/7/73/Bob-omb_Mario_Party_Superstars.png",
+            shyGuy: "https://mario.wiki.gallery/images/thumb/a/a3/Shy_Guy_-_Mario_Party_10.png/180px-Shy_Guy_-_Mario_Party_10.png",
+            egg: "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f1/Yoshi_Egg.svg/1200px-Yoshi_Egg.svg.png",
+            bowser: "https://mario.wiki.gallery/images/thumb/6/67/Bowser_-_Mario_Party_10.png/250px-Bowser_-_Mario_Party_10.png",
+            basketRed: "https://cdn-icons-png.flaticon.com/512/2929/2929486.png", // 紅籃子示意
+            basketGreen: "https://cdn-icons-png.flaticon.com/512/2929/2929506.png"  // 綠籃子示意
+        };
+
+        // --- 系統變數 ---
         const urlParams = new URLSearchParams(window.location.search);
         const gameId = parseInt(urlParams.get('game'));
-        const canvas = document.getElementById('game-canvas');
-        const uiMain = document.getElementById('ui-main');
+        const stage = document.getElementById('game-layer');
+        const ui = document.getElementById('ui-layer');
         const uiTitle = document.getElementById('ui-title');
         const uiDesc = document.getElementById('ui-desc');
         const uiBtn = document.getElementById('ui-btn');
-        const eggDash = document.getElementById('egg-dash');
+        let loopId = null;
+        let isPlaying = false;
+        
+        // 遊戲狀態容器
+        let state = { score: 0, timer: 0, objects: [], player: null };
 
-        let gameState = {
-            running: false,
-            score: 0,
-            timer: 0,
-            loopId: null,
-            player: null,
-            objects: []
-        };
-
-        // --- 初始化與導航 ---
+        // --- 初始化 ---
         function init() {
-            loadProgress();
-            if (!gameId) showDashboard();
-            else if (gameId >= 1 && gameId <= 6) showIntro(gameId);
-            else alert("無效的遊戲代碼");
+            checkProgress();
+            
+            if (!gameId) {
+                showDashboard();
+            } else if (gameId >= 1 && gameId <= 6) {
+                showIntro(gameId);
+            } else {
+                alert("無效的遊戲 ID");
+            }
         }
 
-        function loadProgress() {
-            for (let i = 1; i <= 6; i++) {
-                if (localStorage.getItem('yoshi_pro_g' + i)) {
-                    document.getElementById('slot-' + i).classList.add('collected');
+        // 檢查進度
+        function checkProgress() {
+            for(let i=1; i<=6; i++) {
+                if(localStorage.getItem('yoshi_gift_'+i)) {
+                    const el = document.getElementById('egg-'+i);
+                    if(el) el.classList.add('active');
                 }
             }
         }
 
-        function isAllClear() {
-            let count = 0;
-            for (let i = 1; i <= 6; i++) if (localStorage.getItem('yoshi_pro_g' + i)) count++;
-            return count === 6;
+        function isAllCleared() {
+            let c = 0;
+            for(let i=1; i<=6; i++) if(localStorage.getItem('yoshi_gift_'+i)) c++;
+            return c === 6;
         }
 
+        // 顯示主選單
         function showDashboard() {
-            uiTitle.innerText = "耀西的生日大冒險 (專業版)";
-            uiDesc.innerText = isAllClear() ? "太棒了！所有蛋都收集齊全！" : "收集 6 顆蛋來解鎖生日驚喜！";
-            eggDash.classList.remove('hidden');
-            uiBtn.innerText = isAllClear() ? "打開驚喜禮物" : "請掃描卡片開始";
-            uiBtn.onclick = isAllClear() ? launchCakeScene : null;
-            if(!isAllClear()) uiBtn.style.display = 'none';
-        }
-
-        function showIntro(id) {
-            const data = [
-                {t: "1. 耀西跳跳 (物理版)", d: "點擊跳躍躲避水管。堅持 15 秒！"},
-                {t: "2. 接哈密瓜 (動態版)", d: "左右滑動奔跑，接住綠色哈密瓜，避開炸彈。接 10 個。"},
-                {t: "3. 舌頭攻擊 (精準版)", d: "點擊嘿荷(紅色傢伙)伸出舌頭攻擊。抓 8 隻。"},
-                {t: "4. 破殼而出 (爆裂版)", d: "瘋狂點擊蛋蛋直到它爆炸孵化！"},
-                {t: "5. 顏色分類 (拖曳版)", d: "將耀西拖曳到對應顏色的精緻竹籃裡。分對 10 隻。"},
-                {t: "6. 一二三木頭人 (緊張版)", d: "按住螢幕奔跑，庫巴轉頭看你時立刻放手！"}
-            ];
-            uiTitle.innerText = data[id-1].t;
-            uiDesc.innerText = data[id-1].d;
-            uiBtn.innerText = "準備開始!";
-            uiBtn.onclick = () => startGame(id);
-        }
-
-        function gameOver(win) {
-            gameState.running = false;
-            cancelAnimationFrame(gameState.loopId);
-            uiMain.classList.remove('hidden');
-            eggDash.classList.add('hidden');
-            if (win) {
-                localStorage.setItem('yoshi_pro_g' + gameId, 'true');
-                uiTitle.innerText = "恭喜過關！";
-                uiDesc.innerText = "獲得了一顆耀西蛋！";
-                uiBtn.innerText = "回到主選單";
-                uiBtn.onclick = () => window.location.href = window.location.pathname;
+            document.getElementById('progress-area').classList.remove('hidden');
+            uiTitle.innerText = "耀西的生日冒險";
+            
+            if (isAllCleared()) {
+                uiDesc.innerText = "六顆蛋都收集齊了！\n準備好迎接驚喜了嗎？";
+                uiBtn.innerText = "打開禮物";
+                uiBtn.onclick = launchSurprise;
             } else {
-                uiTitle.innerText = "失敗了...";
-                uiDesc.innerText = "不要氣餒，再試一次！";
-                uiBtn.innerText = "重試";
-                uiBtn.onclick = () => startGame(gameId);
+                uiDesc.innerText = "目前收集進度\n請掃描卡片遊玩關卡";
+                uiBtn.style.display = 'none';
             }
         }
 
+        // 顯示關卡介紹
+        function showIntro(id) {
+            const texts = [
+                {t:"1. 耀西跳跳", d:"點擊螢幕讓耀西跳起來，\n躲避水管堅持 15 秒！"},
+                {t:"2. 哈密瓜接接樂", d:"左右滑動移動耀西，\n接住哈密瓜(綠)，避開炸彈(黑)。\n目標：10分"},
+                {t:"3. 舌頭快手", d:"看到紅色嘿荷出現時，\n點擊它伸舌頭攻擊！\n目標：8隻"},
+                {t:"4. 孵蛋大作戰", d:"狂點螢幕中央的蛋，\n直到它孵化為止！\n目標：連點 30 次"},
+                {t:"5. 顏色分類", d:"把紅色耀西拖到紅籃子，\n綠色耀西拖到綠籃子。\n目標：10隻"},
+                {t:"6. 一二三木頭人", d:"按住螢幕耀西會往上跑，\n庫巴生氣(變紅)時立刻放手！\n目標：抵達終點"}
+            ];
+            uiTitle.innerText = texts[id-1].t;
+            uiDesc.innerText = texts[id-1].d;
+            uiBtn.innerText = "開始";
+            uiBtn.onclick = () => { ui.classList.add('hidden'); startGame(id); };
+        }
+
+        function win() {
+            isPlaying = false;
+            cancelAnimationFrame(loopId);
+            localStorage.setItem('yoshi_gift_'+gameId, 'true');
+            ui.classList.remove('hidden');
+            uiTitle.innerText = "過關！";
+            uiDesc.innerText = "獲得了一顆耀西蛋！";
+            uiBtn.innerText = "回到主畫面";
+            uiBtn.onclick = () => window.location.href = window.location.pathname;
+        }
+
+        function lose() {
+            isPlaying = false;
+            cancelAnimationFrame(loopId);
+            ui.classList.remove('hidden');
+            uiTitle.innerText = "失敗...";
+            uiDesc.innerText = "再試一次吧！";
+            uiBtn.innerText = "重試";
+            uiBtn.onclick = () => { ui.classList.add('hidden'); startGame(gameId); };
+        }
+
+        // --- 核心遊戲引擎 ---
         function startGame(id) {
-            uiMain.classList.add('hidden');
-            canvas.innerHTML = '';
-            gameState = { running: true, score: 0, timer: 0, loopId: null, player: null, objects: [] };
-            if (id === 1) setupG1();
-            else if (id === 2) setupG2();
-            else if (id === 3) setupG3();
-            else if (id === 4) setupG4();
-            else if (id === 5) setupG5();
-            else if (id === 6) setupG6();
+            stage.innerHTML = ''; // 清空場景
+            state = { score: 0, timer: 0, objects: [], player: null };
+            isPlaying = true;
+
+            if(id === 1) game1();
+            if(id === 2) game2();
+            if(id === 3) game3();
+            if(id === 4) game4();
+            if(id === 5) game5();
+            if(id === 6) game6();
         }
 
-        // --- 輔助函數：創建耀西 ---
-        function createYoshi(xPct, yPx, scale = 1) {
-            const wrap = document.createElement('div');
-            wrap.className = 'yoshi-wrap';
-            wrap.style.left = xPct + '%';
-            wrap.style.top = yPx + 'px';
-            wrap.style.transform = `scale(${scale}) translateX(-50%)`;
-            wrap.innerHTML = '<div class="yoshi-body-group"><div class="y-head"></div><div class="y-nose"><div class="y-eye"></div></div><div class="y-cheek"></div><div class="y-body"></div><div class="y-shell"></div><div class="y-boot-l"></div><div class="y-boot-r"></div></div>';
-            canvas.appendChild(wrap);
-            return wrap;
+        // 輔助：建立圖片精靈
+        function createSprite(url, w, h, x, y) {
+            const img = document.createElement('div');
+            img.className = 'sprite';
+            img.style.backgroundImage = `url('${url}')`;
+            img.style.width = w + 'px';
+            img.style.height = h + 'px';
+            img.style.left = x + 'px';
+            img.style.top = y + 'px';
+            stage.appendChild(img);
+            return img;
         }
 
-        // ================= 遊戲邏輯實作 =================
+        // ================= 各關卡邏輯 (修正版) =================
 
-        // --- G1: 物理跳躍 ---
-        function setupG1() {
-            const yoshi = createYoshi(30, 200);
-            let y = 200, vy = 0, gravity = 0.8, jumpForce = -12;
-            const groundLevel = canvas.clientHeight - 20;
-            
-            // 地板
+        // --- G1: 跳躍 (修正：重力與位置) ---
+        function game1() {
+            const groundY = stage.clientHeight - 60;
+            const player = createSprite(ASSETS.yoshiRun, 60, 60, 50, groundY);
+            let vy = 0;
+            let y = groundY;
+            let onGround = true;
+
+            // 地板裝飾
             const ground = document.createElement('div');
-            ground.style.cssText = 'position:absolute; bottom:0; width:100%; height:20px; background:#5D4037;border-top:3px solid #3E2723;';
-            canvas.appendChild(ground);
+            ground.id = 'ground';
+            stage.appendChild(ground);
 
-            document.body.onpointerdown = () => { if (y >= groundLevel - 80) { vy = jumpForce; yoshi.classList.add('jumping'); }};
-            document.body.onpointerup = () => yoshi.classList.remove('jumping');
+            // 跳躍事件
+            document.body.onpointerdown = (e) => {
+                if(onGround && isPlaying) {
+                    vy = -13; // 跳躍力道
+                    onGround = false;
+                    player.style.backgroundImage = `url('${ASSETS.yoshi}')`; // 換圖
+                }
+            };
 
             function loop() {
-                if (!gameState.running) return;
-                gameState.timer++;
+                if(!isPlaying) return;
+                state.timer++;
 
                 // 物理
-                vy += gravity;
+                vy += 0.8; // 重力
                 y += vy;
-                if (y > groundLevel - 80) { y = groundLevel - 80; vy = 0; yoshi.classList.remove('jumping'); }
-                yoshi.style.top = y + 'px';
+                if(y > groundY) {
+                    y = groundY;
+                    vy = 0;
+                    onGround = true;
+                    player.style.backgroundImage = `url('${ASSETS.yoshiRun}')`;
+                }
+                player.style.top = y + 'px';
 
-                // 生成水管
-                if (gameState.timer % 90 === 0) {
-                    const height = Math.random() * 150 + 80; // 隨機高度
+                // 生成障礙 (水管)
+                if(state.timer % 100 === 0) {
+                    const h = Math.random() * 80 + 50;
                     const pipe = document.createElement('div');
-                    pipe.className = 'pipe game-obj';
-                    pipe.style.height = height + 'px';
-                    pipe.style.left = '110%';
-                    pipe.innerHTML = '<div class="pipe-cap"></div>';
-                    canvas.appendChild(pipe);
-                    gameState.objects.push({ el: pipe, x: 110, h: height });
+                    pipe.style.cssText = `position:absolute; bottom:40px; left:100%; width:50px; height:${h}px; background:#2E7D32; border:2px solid #1B5E20; z-index:5;`;
+                    // 水管頭
+                    const cap = document.createElement('div');
+                    cap.style.cssText = `position:absolute; top:-20px; left:-5px; width:60px; height:20px; background:#2E7D32; border:2px solid #1B5E20;`;
+                    pipe.appendChild(cap);
+                    stage.appendChild(pipe);
+                    state.objects.push({el: pipe, x: 100});
                 }
 
-                // 移動與碰撞
-                gameState.objects.forEach((obj, i) => {
-                    obj.x -= 1.5;
+                // 障礙移動
+                state.objects.forEach((obj, i) => {
+                    obj.x -= 1.5; // 移動速度
                     obj.el.style.left = obj.x + '%';
+
+                    // 碰撞檢測
+                    const pRect = player.getBoundingClientRect();
+                    const oRect = obj.el.getBoundingClientRect();
                     
-                    // 精確碰撞
-                    const yRect = yoshi.getBoundingClientRect();
-                    const pRect = obj.el.getBoundingClientRect();
-                    if (yRect.right > pRect.left + 10 && yRect.left < pRect.right - 10 && yRect.bottom > pRect.top + 5) {
-                        gameOver(false);
+                    // 簡單縮小碰撞框避免誤判
+                    if(pRect.right-10 > oRect.left && pRect.left+10 < oRect.right && pRect.bottom-5 > oRect.top) {
+                        lose();
                     }
-                    if (obj.x < -20) { obj.el.remove(); gameState.objects.splice(i, 1); }
+
+                    if(obj.x < -20) {
+                        obj.el.remove();
+                        state.objects.splice(i, 1);
+                    }
                 });
 
-                if (gameState.timer > 60 * 15) gameOver(true); // 15秒
-                gameState.loopId = requestAnimationFrame(loop);
+                if(state.timer > 60 * 15) win(); // 15秒
+                else loopId = requestAnimationFrame(loop);
             }
             loop();
         }
 
-        // --- G2: 動態接哈密瓜 ---
-        function setupG2() {
-            const yoshi = createYoshi(50, canvas.clientHeight - 90);
-            let playerX = 50, targetX = 50;
-
-            // 滑動控制
-            canvas.onpointermove = (e) => {
-                targetX = (e.clientX / canvas.clientWidth) * 100;
+        // --- G2: 接哈密瓜 (修正：速度與操控) ---
+        function game2() {
+            const playerY = stage.clientHeight - 80;
+            const player = createSprite(ASSETS.yoshi, 60, 60, stage.clientWidth/2 - 30, playerY);
+            let playerX = stage.clientWidth/2 - 30;
+            
+            // 觸控跟隨
+            stage.onpointermove = (e) => {
+                if(!isPlaying) return;
+                e.preventDefault();
+                const rect = stage.getBoundingClientRect();
+                let x = e.clientX - rect.left - 30; // 減去一半寬度置中
+                // 限制範圍
+                if(x < 0) x = 0;
+                if(x > stage.clientWidth - 60) x = stage.clientWidth - 60;
+                playerX = x;
+                player.style.left = playerX + 'px';
             };
 
             function loop() {
-                if (!gameState.running) return;
-
-                // 平滑移動與奔跑動畫
-                let dx = targetX - playerX;
-                playerX += dx * 0.15;
-                yoshi.style.left = playerX + '%';
-                if (Math.abs(dx) > 1) yoshi.classList.add('running');
-                else yoshi.classList.remove('running');
-                // 轉向
-                yoshi.querySelector('.yoshi-body-group').style.transform = dx > 0 ? 'scaleX(-1)' : 'scaleX(1)';
-
-                // 生成物品
-                if (Math.random() < 0.04) {
+                if(!isPlaying) return;
+                
+                // 生成掉落物 (降低頻率)
+                if(Math.random() < 0.02) {
                     const isBomb = Math.random() < 0.3;
-                    const item = document.createElement('div');
-                    item.className = (isBomb ? 'bomb' : 'melon') + ' game-obj';
-                    item.style.left = Math.random() * 90 + 5 + '%';
-                    item.style.top = '-50px';
-                    canvas.appendChild(item);
-                    gameState.objects.push({ el: item, y: -50, type: isBomb ? 'bomb' : 'melon' });
+                    const item = createSprite(isBomb ? ASSETS.bomb : ASSETS.melon, 40, 40, Math.random() * (stage.clientWidth - 40), -50);
+                    state.objects.push({el: item, y: -50, type: isBomb});
                 }
 
-                // 物品移動與碰撞
-                gameState.objects.forEach((obj, i) => {
-                    obj.y += (obj.type === 'bomb' ? 4 : 3); // 炸彈比較快
+                state.objects.forEach((obj, i) => {
+                    obj.y += 3; // 降低掉落速度
                     obj.el.style.top = obj.y + 'px';
-                    
-                    const yRect = yoshi.getBoundingClientRect();
+
+                    // 碰撞
+                    const pRect = player.getBoundingClientRect();
                     const iRect = obj.el.getBoundingClientRect();
-                    // 碰撞判斷 (頭部與身體區域)
-                    if (iRect.bottom > yRect.top + 20 && iRect.top < yRect.bottom && iRect.right > yRect.left + 10 && iRect.left < yRect.right - 10) {
-                         obj.el.remove();
-                         gameState.objects.splice(i, 1);
-                         if(obj.type === 'bomb') gameOver(false);
-                         else { gameState.score++; if(gameState.score >= 10) gameOver(true); }
-                    } else if (obj.y > canvas.clientHeight) {
-                        obj.el.remove(); gameState.objects.splice(i, 1);
+
+                    if(pRect.top < iRect.bottom && pRect.bottom > iRect.top && 
+                       pRect.left < iRect.right && pRect.right > iRect.left) {
+                        
+                        obj.el.remove();
+                        state.objects.splice(i, 1);
+                        
+                        if(obj.type) lose(); // 炸彈
+                        else {
+                            state.score++;
+                            // 視覺反饋
+                            player.style.transform = 'scale(1.2)';
+                            setTimeout(()=>player.style.transform='scale(1)', 100);
+                            if(state.score >= 10) win();
+                        }
+                    } else if (obj.y > stage.clientHeight) {
+                        obj.el.remove();
+                        state.objects.splice(i, 1);
                     }
                 });
-                gameState.loopId = requestAnimationFrame(loop);
+
+                loopId = requestAnimationFrame(loop);
             }
             loop();
         }
 
-        // --- G3: 舌頭攻擊 ---
-        function setupG3() {
-            const yoshi = createYoshi(50, canvas.clientHeight - 100);
+        // --- G3: 舌頭 (修正：加上視覺線條) ---
+        function game3() {
+            const player = createSprite(ASSETS.yoshi, 70, 70, stage.clientWidth/2 - 35, stage.clientHeight - 80);
             
-            function spawn() {
-                if (!gameState.running) return;
-                const sg = document.createElement('div');
-                sg.className = 'shy-guy game-obj';
-                sg.style.left = Math.random() * 80 + 10 + '%';
-                sg.style.top = Math.random() * 50 + 10 + '%';
-                sg.innerHTML = '<div class="shy-guy-face"></div>';
-                canvas.appendChild(sg);
-
-                sg.onpointerdown = (e) => {
-                    e.stopPropagation();
-                    shootTongue(sg);
+            function spawnEnemy() {
+                if(!isPlaying) return;
+                const enemy = createSprite(ASSETS.shyGuy, 50, 50, Math.random() * (stage.clientWidth - 60), Math.random() * (stage.clientHeight/2) + 50);
+                
+                // 點擊事件
+                enemy.onpointerdown = (e) => {
+                    e.stopPropagation(); // 防止連點
+                    attack(enemy);
                 };
 
-                setTimeout(() => { if(sg.parentNode) sg.remove(); if(gameState.running) spawn(); }, 1500);
+                // 2秒後消失
+                setTimeout(() => {
+                    if(enemy.parentNode) {
+                        enemy.remove();
+                        if(isPlaying) spawnEnemy();
+                    }
+                }, 2000);
             }
 
-            function shootTongue(target) {
-                if(target.classList.contains('hit')) return;
-                target.classList.add('hit');
-                
+            function attack(target) {
+                // 畫舌頭
                 const tongue = document.createElement('div');
-                tongue.className = 'tongue-lash';
-                canvas.appendChild(tongue);
+                tongue.className = 'tongue-line';
+                stage.appendChild(tongue);
 
-                const yPos = {x: yoshi.offsetLeft, y: yoshi.offsetTop + 20};
-                const tPos = {x: target.offsetLeft + 25, y: target.offsetTop + 25};
-                const deltaX = tPos.x - yPos.x;
-                const deltaY = tPos.y - yPos.y;
-                const dist = Math.sqrt(deltaX*deltaX + deltaY*deltaY);
-                const angle = Math.atan2(deltaY, deltaX) * 180 / Math.PI;
+                // 計算座標
+                const startX = player.offsetLeft + 35;
+                const startY = player.offsetTop + 20;
+                const endX = target.offsetLeft + 25;
+                const endY = target.offsetTop + 25;
 
-                tongue.style.left = yPos.x + 'px';
-                tongue.style.top = yPos.y + 'px';
-                tongue.style.width = '0px';
+                const dx = endX - startX;
+                const dy = endY - startY;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+                const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+
+                tongue.style.left = startX + 'px';
+                tongue.style.top = startY + 'px';
+                tongue.style.width = dist + 'px';
                 tongue.style.transform = `rotate(${angle}deg)`;
 
-                // 舌頭伸出動畫
-                tongue.animate([{width: '0px'}, {width: dist + 'px'}], {duration: 100, fill: 'forwards'}).onfinish = () => {
-                    target.style.transform = 'scale(0)'; // 目標消失
-                    setTimeout(() => target.remove(), 200);
-                    gameState.score++;
-                    // 舌頭收回動畫
-                    tongue.animate([{width: dist + 'px'}, {width: '0px'}], {duration: 150, fill: 'forwards'}).onfinish = () => {
-                        tongue.remove();
-                        if(gameState.score >= 8) gameOver(true);
-                    };
-                };
+                // 擊中效果
+                target.remove();
+                state.score++;
+                
+                setTimeout(() => tongue.remove(), 150); // 收回舌頭
+                
+                if(state.score >= 8) win();
+                else setTimeout(spawnEnemy, 500);
             }
-            spawn();
+
+            spawnEnemy();
         }
 
-        // --- G4: 破殼而出 ---
-        function setupG4() {
-            const eggWrap = document.createElement('div');
-            eggWrap.className = 'big-egg-wrap';
-            eggWrap.innerHTML = `
-                <div class="big-egg-base">
-                    <div class="egg-spot" style="top:20%; left:30%; width:30px; height:30px;"></div>
-                    <div class="egg-spot" style="top:60%; left:60%; width:40px; height:40px;"></div>
-                    <div class="egg-spot" style="top:10%; right:20%; width:25px; height:25px;"></div>
-                    <div class="egg-spot" style="top:70%; left:10%; width:20px; height:20px;"></div>
-                    <svg class="egg-crack" viewBox="0 0 150 200"><path d="M75 20 L85 50 L65 80 L95 110 L55 140 L75 180" /></svg>
-                </div>
-            `;
-            canvas.appendChild(eggWrap);
-
+        // --- G4: 孵蛋 (修正：去除藍框，換成圖片) ---
+        function game4() {
+            const egg = createSprite(ASSETS.egg, 120, 150, stage.clientWidth/2 - 60, stage.clientHeight/2 - 75);
             let clicks = 0;
-            const maxClicks = 25;
-            const crackPath = eggWrap.querySelector('path');
-            const crackSvg = eggWrap.querySelector('.egg-crack');
-            crackPath.style.strokeDasharray = crackPath.getTotalLength();
-            crackPath.style.strokeDashoffset = crackPath.getTotalLength();
 
-            eggWrap.onpointerdown = () => {
+            // 重要：取消瀏覽器默認行為
+            egg.onpointerdown = (e) => {
+                e.preventDefault(); 
                 clicks++;
-                // 晃動效果
-                eggWrap.classList.remove('shaking');
-                void eggWrap.offsetWidth; // trigger reflow
-                eggWrap.classList.add('shaking');
                 
-                // 裂痕進度
-                const progress = clicks / maxClicks;
-                crackSvg.style.opacity = progress > 0.2 ? 1 : 0;
-                crackPath.style.strokeDashoffset = crackPath.getTotalLength() * (1 - progress);
-
-                if (clicks >= maxClicks) {
-                    eggWrap.onpointerdown = null;
-                    eggWrap.classList.remove('shaking');
-                    // 爆炸孵化
-                    eggWrap.querySelector('.big-egg-base').style.transition = 'transform 0.5s';
-                    eggWrap.querySelector('.big-egg-base').style.transform = 'scale(1.5); opacity:0';
-                    setTimeout(() => eggWrap.remove(), 500);
-
-                    // 耀西跳出
-                    const popYoshi = createYoshi(50, canvas.clientHeight/2 + 100, 1.5);
-                    popYoshi.classList.add('yoshi-pop');
-                    setTimeout(() => gameOver(true), 1500);
+                // 震動與變大
+                egg.style.transform = `scale(${1 + clicks/50}) rotate(${Math.random()*10-5}deg)`;
+                
+                if(clicks >= 30) {
+                    // 孵化動畫
+                    egg.style.transition = 'all 0.5s';
+                    egg.style.opacity = 0;
+                    egg.style.transform = 'scale(2)';
+                    
+                    // 耀西出現
+                    setTimeout(() => {
+                        const yoshi = createSprite(ASSETS.yoshiRun, 100, 100, stage.clientWidth/2 - 50, stage.clientHeight/2 - 50);
+                        yoshi.animate([
+                            { transform: 'scale(0) translateY(50px)' },
+                            { transform: 'scale(1.5) translateY(-50px)' },
+                            { transform: 'scale(1) translateY(0)' }
+                        ], { duration: 800 });
+                        setTimeout(win, 1000);
+                    }, 300);
                 }
             };
         }
 
-        // --- G5: 顏色分類 (拖曳) ---
-        function setupG5() {
-            canvas.innerHTML = '<div class="basket red">紅色</div><div class="basket green">綠色</div>';
-            let currentYoshi = null;
-            let isDragging = false;
+        // --- G5: 顏色分類 (修正：拖曳邏輯) ---
+        function game5() {
+            // 籃子
+            const basketR = createSprite(ASSETS.basketRed, 80, 80, 20, stage.clientHeight - 100);
+            const basketG = createSprite(ASSETS.basketGreen, 80, 80, stage.clientWidth - 100, stage.clientHeight - 100);
+            
+            function spawnYoshi() {
+                if(!isPlaying) return;
+                const isGreen = Math.random() > 0.5;
+                const y = createSprite(isGreen ? ASSETS.yoshi : ASSETS.yoshiRun, 60, 60, stage.clientWidth/2 - 30, 50);
+                
+                // 強制改色 (CSS filter)
+                if(!isGreen) y.style.filter = "hue-rotate(140deg)"; // 紅色耀西
 
-            function spawn() {
-                if (!gameState.running) return;
-                const type = Math.random() > 0.5 ? 'red' : 'green';
-                currentYoshi = createYoshi(50, 150);
-                currentYoshi.dataset.type = type;
-                if (type === 'red') {
-                    currentYoshi.querySelector('.y-head').style.background = currentYoshi.querySelector('.y-body').style.background = currentYoshi.querySelector('.y-nose').style.background = 'var(--yoshi-red)';
-                }
-                setupDrag(currentYoshi);
-            }
-
-            function setupDrag(el) {
-                let startX, startY, initialX, initialY;
-                el.onpointerdown = (e) => {
+                let isDragging = false;
+                
+                y.onpointerdown = (e) => {
+                    e.preventDefault();
                     isDragging = true;
-                    el.classList.add('dragging');
-                    startX = e.clientX; startY = e.clientY;
-                    initialX = el.offsetLeft; initialY = el.offsetTop;
-                    el.setPointerCapture(e.pointerId);
+                    y.setPointerCapture(e.pointerId);
                 };
-                el.onpointermove = (e) => {
-                    if (!isDragging) return;
-                    el.style.left = (initialX + e.clientX - startX) + 'px';
-                    el.style.top = (initialY + e.clientY - startY) + 'px';
+
+                y.onpointermove = (e) => {
+                    if(!isDragging) return;
+                    e.preventDefault();
+                    // 讓圖片跟隨手指中心
+                    y.style.left = (e.clientX - stage.getBoundingClientRect().left - 30) + 'px';
+                    y.style.top = (e.clientY - stage.getBoundingClientRect().top - 30) + 'px';
                 };
-                el.onpointerup = (e) => {
+
+                y.onpointerup = (e) => {
                     isDragging = false;
-                    el.classList.remove('dragging');
-                    checkDrop(el);
+                    const rect = y.getBoundingClientRect();
+                    const bR = basketR.getBoundingClientRect();
+                    const bG = basketG.getBoundingClientRect();
+
+                    let correct = false;
+                    // 判定紅籃
+                    if(!isGreen && isOverlap(rect, bR)) correct = true;
+                    // 判定綠籃
+                    if(isGreen && isOverlap(rect, bG)) correct = true;
+
+                    if(correct) {
+                        y.remove();
+                        state.score++;
+                        if(state.score >= 10) win();
+                        else spawnYoshi();
+                    } else {
+                        // 錯誤彈回
+                        y.style.left = (stage.clientWidth/2 - 30) + 'px';
+                        y.style.top = '50px';
+                    }
                 };
             }
-
-            function checkDrop(el) {
-                const yRect = el.getBoundingClientRect();
-                const redBasket = document.querySelector('.basket.red').getBoundingClientRect();
-                const greenBasket = document.querySelector('.basket.green').getBoundingClientRect();
-                const type = el.dataset.type;
-
-                let correct = false;
-                if (type === 'red' && yRect.right > redBasket.left && yRect.left < redBasket.right && yRect.bottom > redBasket.top) correct = true;
-                else if (type === 'green' && yRect.right > greenBasket.left && yRect.left < greenBasket.right && yRect.bottom > greenBasket.top) correct = true;
-
-                if (correct) {
-                    el.style.transform = 'scale(0)';
-                    setTimeout(el.remove, 300);
-                    gameState.score++;
-                    if (gameState.score >= 10) gameOver(true);
-                    else setTimeout(spawn, 500);
-                } else {
-                    // 彈回原位
-                    el.style.transition = 'all 0.3s';
-                    el.style.left = '50%'; el.style.top = '150px';
-                    setTimeout(() => { el.style.transition = ''; }, 300);
-                }
+            
+            function isOverlap(r1, r2) {
+                return !(r1.right < r2.left || r1.left > r2.right || r1.bottom < r2.top || r1.top > r2.bottom);
             }
-            spawn();
+
+            spawnYoshi();
         }
 
-        // --- G6: 一二三木頭人 ---
-        function setupG6() {
-            const yoshi = createYoshi(20, canvas.clientHeight - 50);
-            yoshi.style.transition = 'bottom 0.1s linear';
-            
-            canvas.innerHTML += '<div class="finish-line"></div>';
-            const bowser = document.createElement('div');
-            bowser.className = 'bowser-wrap';
-            bowser.innerHTML = '<div class="bowser-shell"></div><div class="bowser-body"></div><div class="bowser-head"><div class="bowser-horn horn-l"></div><div class="bowser-horn horn-r"></div></div>';
-            canvas.appendChild(bowser);
+        // --- G6: 木頭人 (修正：垂直卷軸) ---
+        function game6() {
+            // 終點線
+            const line = document.createElement('div');
+            line.className = 'finish-line';
+            stage.appendChild(line);
 
+            // 庫巴 (上方)
+            const bowser = createSprite(ASSETS.bowser, 100, 100, stage.clientWidth/2 - 50, 10);
+            
+            // 耀西 (下方)
+            const yoshi = createSprite(ASSETS.yoshi, 60, 60, stage.clientWidth/2 - 30, stage.clientHeight - 80);
+            
             let progress = 0;
             let isMoving = false;
-            let isLooking = false;
-            let nextTurnTime = Math.random() * 2000 + 1000;
+            let isAngry = false; // 庫巴生氣狀態
+            let nextStateTime = performance.now() + 2000;
 
-            document.body.onpointerdown = () => { isMoving = true; yoshi.classList.add('running'); };
-            document.body.onpointerup = () => { isMoving = false; yoshi.classList.remove('running'); };
+            // 按住螢幕移動
+            stage.onpointerdown = (e) => { e.preventDefault(); isMoving = true; };
+            stage.onpointerup = (e) => { e.preventDefault(); isMoving = false; };
 
-            function loop(timestamp) {
-                if (!gameState.running) return;
+            function loop(time) {
+                if(!isPlaying) return;
+
+                // 庫巴邏輯
+                if(time > nextStateTime) {
+                    isAngry = !isAngry;
+                    // 視覺改變
+                    if(isAngry) {
+                        bowser.style.filter = "sepia(1) saturate(5) hue-rotate(-50deg)"; // 變紅
+                        bowser.style.transform = "scale(1.1)";
+                    } else {
+                        bowser.style.filter = "none";
+                        bowser.style.transform = "scale(1)";
+                    }
+                    nextStateTime = time + (isAngry ? 1500 : 2000); // 生氣短一點，背對久一點
+                }
+
+                // 玩家邏輯
+                if(isMoving) {
+                    if(isAngry) {
+                        lose(); // 動了就輸
+                        return;
+                    }
+                    progress += 1.5; // 前進速度
+                    yoshi.style.backgroundImage = `url('${ASSETS.yoshiRun}')`;
+                } else {
+                    yoshi.style.backgroundImage = `url('${ASSETS.yoshi}')`;
+                }
+
+                // 更新位置 (由下往上)
+                const startY = stage.clientHeight - 80;
+                const endY = 100; // 庫巴位置
+                const currentY = startY - progress;
                 
-                // 庫巴行為
-                if (timestamp > nextTurnTime) {
-                    isLooking = !isLooking;
-                    bowser.classList.toggle('looking', isLooking);
-                    nextTurnTime = timestamp + (isLooking ? Math.random()*1500+500 : Math.random()*2000+1500);
-                }
+                yoshi.style.top = currentY + 'px';
 
-                // 玩家移動與判定
-                if (isMoving) {
-                    if (isLooking) { gameOver(false); return; }
-                    progress += 0.4;
-                    yoshi.style.bottom = (progress + 50) + 'px';
-                    if (progress + 50 > canvas.clientHeight - 130) gameOver(true);
-                }
-
-                gameState.loopId = requestAnimationFrame(loop);
+                if(currentY <= endY) win();
+                else loopId = requestAnimationFrame(loop);
             }
-            requestAnimationFrame(loop);
+            loopId = requestAnimationFrame(loop);
         }
 
-        // --- 最終蛋糕場景 ---
-        function launchCakeScene() {
-            document.getElementById('game-container').innerHTML = `
-                <div id="cake-scene">
-                    <div class="final-cake">
-                        <div class="candle-final"><div class="flame-final"></div></div>
-                        <div class="cake-tier">
-                            <div class="cake-spot" style="top:20%; left:20%;"></div>
-                            <div class="cake-spot" style="top:50%; right:30%;"></div>
-                            <div class="cake-spot" style="top:10%; right:10%;"></div>
-                            <div class="cake-spot" style="bottom:20%; left:40%;"></div>
-                        </div>
+        // --- 最終驚喜 ---
+        function launchSurprise() {
+            stage.innerHTML = `
+                <div class="cake-container">
+                    <img src="https://mario.wiki.gallery/images/thumb/e/e0/Yoshi_Series_Emblem.svg/1200px-Yoshi_Series_Emblem.svg.png" width="200">
+                    <div class="final-msg">
+                        阿癱<br>お誕生日おめでとう！
                     </div>
-                    <div class="jp-msg">阿癱<br>お誕生日おめでとう！</div>
                 </div>
             `;
-            // 彩帶特效
+            // 撒花特效
             for(let i=0; i<50; i++) {
                 const conf = document.createElement('div');
-                conf.style.cssText = `position:absolute; width:10px; height:10px; background:hsl(${Math.random()*360},70%,60%); top:-10px; left:${Math.random()*100}%; opacity:0.8;`;
-                document.getElementById('cake-scene').appendChild(conf);
+                conf.style.cssText = `position:absolute; width:10px; height:10px; background:${['#f00','#0f0','#00f'][Math.floor(Math.random()*3)]}; top:-10px; left:${Math.random()*100}%;`;
+                stage.appendChild(conf);
                 conf.animate([
-                    { transform: `translate(0,0) rotate(0deg)`, opacity: 1 },
-                    { transform: `translate(${Math.random()*100-50}px, ${canvas.clientHeight}px) rotate(${Math.random()*720}deg)`, opacity: 0 }
-                ], { duration: Math.random()*2000+1500, easing: 'cubic-bezier(.25,.46,.45,.94)', fill: 'forwards' });
+                    {transform: `translateY(0) rotate(0deg)`, opacity:1},
+                    {transform: `translateY(${window.innerHeight}px) rotate(720deg)`, opacity:0}
+                ], {
+                    duration: 2000 + Math.random()*2000,
+                    iterations: Infinity
+                });
             }
         }
 
-        // 啟動
         init();
     </script>
 </body>
