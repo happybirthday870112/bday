@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Yoshi's Birthday Adventure</title>
+    <style>
+        /* --- 全局設定 --- */
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #f0f8ff;
+            font-family: 'Arial', sans-serif;
+            overflow: hidden; /* 禁止捲動 */
+            touch-action: none; /* 禁止預設觸控行為 */
+            user-select: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            color: #333;
+        }
+
+        #game-container {
+            width: 100%;
+            height: 100%;
+            max-width: 500px; /* 手機比例限制 */
+            background: linear-gradient(to bottom, #87CEEB, #E0F6FF);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        /* --- UI 介面 --- */
+        .ui-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            background: rgba(255, 255, 255, 0.9);
+            text-align: center;
+            transition: opacity 0.5s;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        h1 { color: #4CAF50; margin-bottom: 20px; font-size: 24px; }
+        p { font-size: 18px; margin-bottom: 30px; line-height: 1.5; padding: 0 20px;}
+        
+        .btn {
+            background: #76c7c0;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 20px;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px #5a9e98;
+        }
+        .btn:active { transform: translateY(4px); box-shadow: none; }
+
+        /* --- 進度儀表板 --- */
+        .egg-collection {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .egg-slot {
+            width: 30px;
+            height: 40px;
+            border: 2px dashed #ccc;
+            border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            background: rgba(255,255,255,0.5);
+        }
+        .egg-slot.collected {
+            background: #fff;
+            border: 2px solid #4CAF50;
+        }
+        .egg-slot.collected::after {
+            content: '🥚';
+            font-size: 24px;
+        }
+
+        /* --- CSS 幾何耀西繪製 --- */
+        .yoshi {
+            position: absolute;
+            width: 60px;
+            height: 60px;
+            z-index: 10;
+            transition: transform 0.1s;
+        }
+        .yoshi-head {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            background: #4CAF50;
+            border-radius: 50%;
+            top: 0;
+            left: 10px;
+            z-index: 2;
+        }
+        .yoshi-nose {
+            position: absolute;
+            width: 30px;
+            height: 25px;
+            background: #4CAF50;
+            border-radius: 50%;
+            top: 5px;
+            right: -5px;
+            z-index: 2;
+        }
+        .yoshi-body {
+            position: absolute;
+            width: 25px;
+            height: 30px;
+            background: #4CAF50;
+            border-radius: 40%;
+            top: 25px;
+            left: 10px;
+            z-index: 1;
+        }
+        .yoshi-cheek {
+            position: absolute;
+            width: 15px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            top: 20px;
+            left: 20px;
+            z-index: 3;
+        }
+        .yoshi-shell {
+            position: absolute;
+            width: 15px;
+            height: 15px;
+            background: #F44336;
+            border-radius: 50%;
+            top: 30px;
+            left: 5px;
+            z-index: 0;
+        }
+        .yoshi-boots {
+            position: absolute;
+            width: 20px;
+            height: 12px;
+            background: #FF9800;
+            border-radius: 10px;
+            bottom: 0;
+            left: 15px;
+            z-index: 1;
+        }
+
+        /* --- 遊戲元素樣式 --- */
+        .game-object { position: absolute; }
+        
+        /* Game 1: Jump */
+        .obstacle { background: #555; width: 30px; height: 30px; bottom: 0; clip-path: polygon(50% 0%, 0% 100%, 100% 100%); }
+        .ground { position: absolute; bottom: 0; width: 100%; height: 20px; background: #8B4513; }
+        
+        /* Game 2: Melon Catch */
+        .melon { width: 30px; height: 30px; background: #90EE90; border-radius: 50%; border: 2px solid #2E8B57; }
+        .melon::after { content:''; position:absolute; width:100%; height:2px; background:#2E8B57; top:50%; }
+        .bomb { width: 30px; height: 30px; background: #333; border-radius: 50%; }
+        .bomb::before { content:'💣'; position: absolute; top:-5px; left:2px; font-size:20px; color:white; }
+
+        /* Game 3: Tongue Shot */
+        .shy-guy { width: 40px; height: 40px; background: #F44336; border-radius: 5px; }
+        .shy-guy::after { content:'xx'; color:white; font-family:monospace; position:absolute; top:10px; left:10px; font-weight:bold;}
+        .tongue { height: 5px; background: #FF69B4; transform-origin: left center; position: absolute; }
+
+        /* Game 4: Egg Laying */
+        .big-egg { width: 100px; height: 130px; background: white; border: 5px solid #4CAF50; border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%; position: relative; cursor: pointer; transition: transform 0.05s;}
+        .big-egg::after { content: ''; position: absolute; width: 20px; height: 20px; background: #4CAF50; border-radius: 50%; top: 30px; left: 20px; }
+        
+        /* Game 5: Color Match */
+        .basket { width: 100px; height: 50px; position: absolute; bottom: 20px; border-radius: 0 0 10px 10px; opacity: 0.8; text-align: center; line-height: 50px; font-weight: bold; color: white;}
+        .basket-left { left: 20px; background: #F44336; }
+        .basket-right { right: 20px; background: #4CAF50; }
+
+        /* Game 6: Stop Go */
+        .bowser { width: 80px; height: 80px; position: absolute; top: 20px; right: 20px; background: #FFC107; border-radius: 10px; border: 3px solid #333; transition: background 0.2s;}
+        .bowser.angry { background: #F44336; } /* Back turned vs Looking */
+
+        /* --- 蛋糕與慶祝頁面 --- */
+        #cake-scene {
+            background: #FFE4E1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .cake-container {
+            position: relative;
+            margin-top: 50px;
+        }
+        .cake-base {
+            width: 200px;
+            height: 100px;
+            background: #FFF;
+            border-radius: 10px;
+            position: relative;
+            box-shadow: 0 5px #ddd;
+        }
+        .cake-spot {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #4CAF50;
+            border-radius: 50%;
+        }
+        .candle {
+            width: 10px;
+            height: 40px;
+            background: #FF9800;
+            position: absolute;
+            top: -40px;
+            left: 95px;
+        }
+        .flame {
+            width: 10px;
+            height: 15px;
+            background: #FF5722;
+            border-radius: 50% 50% 20% 20%;
+            position: absolute;
+            top: -15px;
+            animation: flicker 0.5s infinite alternate;
+        }
+        @keyframes flicker { from { transform: scale(1); opacity: 1; } to { transform: scale(1.1); opacity: 0.8; } }
+        
+        .message-jp {
+            font-size: 28px;
+            color: #E91E63;
+            font-weight: bold;
+            margin-top: 30px;
+            text-shadow: 2px 2px #fff;
+            animation: popIn 1s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        @keyframes popIn { from { transform: scale(0); } to { transform: scale(1); } }
+
+    </style>
+</head>
+<body>
+
+    <div id="game-container">
+        <div id="game-canvas" style="position: relative; width: 100%; height: 100%;"></div>
+
+        <div id="ui-layer" class="ui-screen">
+            <h1 id="ui-title">載入中...</h1>
+            <div id="egg-display" class="egg-collection hidden">
+                <div class="egg-slot" id="slot-1">1</div>
+                <div class="egg-slot" id="slot-2">2</div>
+                <div class="egg-slot" id="slot-3">3</div>
+                <div class="egg-slot" id="slot-4">4</div>
+                <div class="egg-slot" id="slot-5">5</div>
+                <div class="egg-slot" id="slot-6">6</div>
+            </div>
+            <p id="ui-desc">請稍候</p>
+            <button id="ui-btn" class="btn">開始</button>
+        </div>
+    </div>
+
+    <script>
+        // --- 核心邏輯 ---
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = parseInt(urlParams.get('game')); // 取得網址上的 ?game=X
+        const uiLayer = document.getElementById('ui-layer');
+        const uiTitle = document.getElementById('ui-title');
+        const uiDesc = document.getElementById('ui-desc');
+        const uiBtn = document.getElementById('ui-btn');
+        const eggDisplay = document.getElementById('egg-display');
+        const canvas = document.getElementById('game-canvas');
+
+        let isGameOver = false;
+        let score = 0;
+        let gameLoopId;
+
+        // 初始化
+        function init() {
+            loadProgress();
+            
+            if (!gameId) {
+                // 沒有參數，顯示進度頁面
+                showDashboard();
+            } else if (gameId >= 1 && gameId <= 6) {
+                // 有參數，準備進入對應的小遊戲
+                showGameIntro(gameId);
+            } else {
+                alert("無效的遊戲代碼");
+            }
+        }
+
+        // 讀取進度
+        function loadProgress() {
+            for (let i = 1; i <= 6; i++) {
+                if (localStorage.getItem('yoshi_game_' + i)) {
+                    const slot = document.getElementById('slot-' + i);
+                    if(slot) slot.classList.add('collected');
+                }
+            }
+            checkAllClear();
+        }
+
+        // 檢查是否全破
+        function checkAllClear() {
+            let cleared = 0;
+            for (let i = 1; i <= 6; i++) {
+                if (localStorage.getItem('yoshi_game_' + i)) cleared++;
+            }
+            return cleared === 6;
+        }
+
+        // 顯示總進度板
+        function showDashboard() {
+            uiTitle.innerText = "耀西的生日大冒險";
+            uiDesc.innerText = checkAllClear() 
+                ? "所有蛋都找齊了！\n準備好迎接驚喜了嗎？" 
+                : "目前蒐集的耀西蛋進度。\n請掃描實體卡片來玩遊戲！";
+            eggDisplay.classList.remove('hidden');
+            
+            if (checkAllClear()) {
+                uiBtn.innerText = "打開驚喜";
+                uiBtn.onclick = startCakeScene;
+            } else {
+                uiBtn.style.display = 'none'; // 未全破不顯示按鈕
+            }
+        }
+
+        // 顯示遊戲介紹
+        function showGameIntro(id) {
+            const titles = [
+                "1. 耀西跳跳", "2. 接哈密瓜", "3. 舌頭攻擊", 
+                "4. 孵蛋大作戰", "5. 顏色分類", "6. 躲避庫巴"
+            ];
+            const descs = [
+                "點擊螢幕跳躍，\n避開障礙物堅持15秒！",
+                "左右滑動接哈密瓜(綠色)，\n避開炸彈(黑色)！接10個。",
+                "看到紅色嘿荷出現時，\n點擊它攻擊！抓8隻。",
+                "5秒內快速連點螢幕20次，\n讓蛋孵化！",
+                "紅色耀西往左滑(紅籃)，\n綠色耀西往右滑(綠籃)。分對10隻。",
+                "按住螢幕前進，\n庫巴轉身(變紅)時立刻放手！"
+            ];
+
+            uiTitle.innerText = titles[id-1];
+            uiDesc.innerText = descs[id-1];
+            uiBtn.innerText = "開始遊戲";
+            uiBtn.onclick = () => startGame(id);
+        }
+
+        function gameWin() {
+            cancelAnimationFrame(gameLoopId);
+            isGameOver = true;
+            localStorage.setItem('yoshi_game_' + gameId, 'true');
+            
+            uiLayer.classList.remove('hidden');
+            uiTitle.innerText = "過關！";
+            uiDesc.innerText = "你獲得了一顆耀西蛋！";
+            uiBtn.innerText = "回到進度表";
+            uiBtn.onclick = () => { window.location.href = window.location.pathname; }; // 回到無參數首頁
+        }
+
+        function gameFail() {
+            cancelAnimationFrame(gameLoopId);
+            isGameOver = true;
+            uiLayer.classList.remove('hidden');
+            uiTitle.innerText = "失敗了...";
+            uiDesc.innerText = "再試一次吧！";
+            uiBtn.innerText = "重來";
+            uiBtn.onclick = () => startGame(gameId);
+        }
+
+        function startGame(id) {
+            uiLayer.classList.add('hidden');
+            canvas.innerHTML = ''; // 清空畫布
+            isGameOver = false;
+            score = 0;
+
+            // 根據 ID 啟動對應邏輯
+            if(id === 1) startJumpGame();
+            if(id === 2) startCatchGame();
+            if(id === 3) startTongueGame();
+            if(id === 4) startClickGame();
+            if(id === 5) startSwipeGame();
+            if(id === 6) startStopGame();
+        }
+
+        // --- 小遊戲 1: 跳躍 ---
+        function startJumpGame() {
+            const yoshi = createYoshi(50, 200);
+            const ground = document.createElement('div');
+            ground.className = 'ground';
+            canvas.appendChild(ground);
+
+            let dy = 0;
+            let y = 0;
+            let onGround = true;
+            let timer = 0;
+            const targetTime = 15 * 60; // 60fps * 15s
+
+            // 點擊跳躍
+            document.body.ontouchstart = document.body.onmousedown = () => {
+                if(onGround) { dy = -12; onGround = false; }
+            };
+
+            // 障礙物生成
+            let obstacles = [];
+            
+            function loop() {
+                if(isGameOver) return;
+                timer++;
+                
+                // 物理
+                dy += 0.6; // 重力
+                y += dy;
+                if(y > 0) { y = 0; dy = 0; onGround = true; }
+                yoshi.style.bottom = (20 + -y) + 'px';
+
+                // 生成障礙
+                if(timer % 120 === 0) {
+                    const obs = document.createElement('div');
+                    obs.className = 'obstacle game-object';
+                    obs.style.left = '100%';
+                    canvas.appendChild(obs);
+                    obstacles.push({el: obs, x: 100});
+                }
+
+                // 移動障礙與碰撞
+                obstacles.forEach((ob, index) => {
+                    ob.x -= 1.5; // 速度
+                    ob.el.style.left = ob.x + '%';
+                    
+                    // 碰撞檢測 (簡單版)
+                    if(ob.x < 20 && ob.x > 10 && y > -30) {
+                        gameFail();
+                    }
+                    if(ob.x < -10) {
+                        ob.el.remove();
+                        obstacles.splice(index, 1);
+                    }
+                });
+
+                // 通關
+                if(timer > targetTime) gameWin();
+                else {
+                   uiTitle.innerText = "剩餘時間: " + Math.ceil((targetTime - timer)/60); // 借用一下隱藏的標題顯示倒數(如果是debug用)
+                   gameLoopId = requestAnimationFrame(loop);
+                }
+            }
+            loop();
+        }
+
+        // --- 小遊戲 2: 接哈密瓜 ---
+        function startCatchGame() {
+            const yoshi = createYoshi(50, 20);
+            let playerX = 50;
+            let items = [];
+
+            // 滑動控制
+            let startX = 0;
+            document.body.ontouchstart = (e) => startX = e.touches[0].clientX;
+            document.body.ontouchmove = (e) => {
+                let diff = e.touches[0].clientX - startX;
+                playerX += diff * 0.1;
+                if(playerX < 0) playerX = 0;
+                if(playerX > 90) playerX = 90;
+                yoshi.style.left = playerX + '%';
+                startX = e.touches[0].clientX;
+            };
+
+            function loop() {
+                if(isGameOver) return;
+                
+                // 生成物品
+                if(Math.random() < 0.03) {
+                    const isBomb = Math.random() < 0.3;
+                    const item = document.createElement('div');
+                    item.className = isBomb ? 'bomb game-object' : 'melon game-object';
+                    item.style.left = Math.random() * 90 + '%';
+                    item.style.top = '0px';
+                    canvas.appendChild(item);
+                    items.push({el: item, y: 0, type: isBomb ? 'bomb' : 'melon'});
+                }
+
+                items.forEach((it, i) => {
+                    it.y += 2;
+                    it.el.style.top = it.y + 'px';
+                    
+                    // 碰撞
+                    const playerRect = yoshi.getBoundingClientRect();
+                    const itemRect = it.el.getBoundingClientRect();
+                    
+                    if(!(playerRect.right < itemRect.left || 
+                         playerRect.left > itemRect.right || 
+                         playerRect.bottom < itemRect.top || 
+                         playerRect.top > itemRect.bottom)) {
+                         
+                         // 撞到了
+                         it.el.remove();
+                         items.splice(i, 1);
+                         if(it.type === 'bomb') gameFail();
+                         else {
+                             score++;
+                             if(score >= 10) gameWin();
+                         }
+                    }
+                    else if(it.y > window.innerHeight) {
+                        it.el.remove();
+                        items.splice(i, 1);
+                    }
+                });
+                gameLoopId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // --- 小遊戲 3: 舌頭攻擊 ---
+        function startTongueGame() {
+            const yoshi = createYoshi(50, 20);
+            yoshi.style.bottom = '20px';
+            
+            function spawnShyGuy() {
+                if(isGameOver) return;
+                const sg = document.createElement('div');
+                sg.className = 'shy-guy game-object';
+                sg.style.left = Math.random() * 80 + 10 + '%';
+                sg.style.top = Math.random() * 60 + 10 + '%';
+                
+                sg.onmousedown = sg.ontouchstart = (e) => {
+                    e.stopPropagation(); // 防止點到背景
+                    shootTongue(sg);
+                };
+                
+                canvas.appendChild(sg);
+                
+                // 2秒沒點到就消失
+                setTimeout(() => { 
+                    if(sg.parentNode) sg.remove(); 
+                    if(!isGameOver) spawnShyGuy();
+                }, 1500);
+            }
+
+            function shootTongue(target) {
+                const tongue = document.createElement('div');
+                tongue.className = 'tongue';
+                
+                // 計算舌頭長度與角度 (簡化為直線動畫)
+                const yRect = yoshi.getBoundingClientRect();
+                const tRect = target.getBoundingClientRect();
+                
+                tongue.style.left = (yoshi.offsetLeft + 30) + 'px';
+                tongue.style.top = (yoshi.offsetTop + 10) + 'px';
+                
+                // 簡單視覺效果，不計算真實三角函數角度，直接把舌頭伸過去是比較複雜的
+                // 這裡簡化：點到就消滅，加分
+                target.remove();
+                score++;
+                if(score >= 8) gameWin();
+            }
+            
+            spawnShyGuy();
+        }
+
+        // --- 小遊戲 4: 孵蛋 ---
+        function startClickGame() {
+            const egg = document.createElement('div');
+            egg.className = 'big-egg';
+            egg.style.position = 'absolute';
+            egg.style.top = '50%';
+            egg.style.left = '50%';
+            egg.style.transform = 'translate(-50%, -50%) scale(1)';
+            canvas.appendChild(egg);
+
+            let clicks = 0;
+            let timeLeft = 5;
+
+            egg.onmousedown = egg.ontouchstart = (e) => {
+                e.preventDefault();
+                clicks++;
+                egg.style.transform = `translate(-50%, -50%) scale(${1 + clicks/20})`;
+                if(clicks >= 20) gameWin();
+            };
+
+            const timer = setInterval(() => {
+                if(isGameOver) { clearInterval(timer); return; }
+                timeLeft--;
+                if(timeLeft <= 0) {
+                    clearInterval(timer);
+                    if(clicks < 20) gameFail();
+                }
+            }, 1000);
+        }
+
+        // --- 小遊戲 5: 顏色分類 ---
+        function startSwipeGame() {
+            const leftBasket = document.createElement('div');
+            leftBasket.className = 'basket basket-left';
+            leftBasket.innerText = '紅色';
+            canvas.appendChild(leftBasket);
+
+            const rightBasket = document.createElement('div');
+            rightBasket.className = 'basket basket-right';
+            rightBasket.innerText = '綠色';
+            canvas.appendChild(rightBasket);
+
+            let currentYoshi = null;
+            let currentType = ''; // 'red' or 'green'
+            
+            function spawn() {
+                if(isGameOver) return;
+                currentType = Math.random() > 0.5 ? 'red' : 'green';
+                currentYoshi = createYoshi(50, 50);
+                currentYoshi.style.top = '100px';
+                
+                // 改變顏色
+                if(currentType === 'red') {
+                    currentYoshi.querySelector('.yoshi-head').style.background = '#F44336';
+                    currentYoshi.querySelector('.yoshi-body').style.background = '#F44336';
+                    currentYoshi.querySelector('.yoshi-nose').style.background = '#F44336';
+                }
+            }
+
+            // 滑動偵測
+            let startX = 0;
+            document.body.ontouchstart = (e) => startX = e.touches[0].clientX;
+            document.body.ontouchend = (e) => {
+                if(!currentYoshi) return;
+                let endX = e.changedTouches[0].clientX;
+                let diff = endX - startX;
+                
+                if(Math.abs(diff) > 50) {
+                    if(diff < 0) { // 左滑
+                        if(currentType === 'red') correct();
+                        else gameFail();
+                    } else { // 右滑
+                        if(currentType === 'green') correct();
+                        else gameFail();
+                    }
+                }
+            };
+
+            function correct() {
+                score++;
+                currentYoshi.remove();
+                currentYoshi = null;
+                if(score >= 10) gameWin();
+                else setTimeout(spawn, 300);
+            }
+
+            spawn();
+        }
+
+        // --- 小遊戲 6: 躲避庫巴 ---
+        function startStopGame() {
+            const yoshi = createYoshi(50, 80);
+            yoshi.style.bottom = '10px';
+            yoshi.style.left = '10px';
+            
+            const bowser = document.createElement('div');
+            bowser.className = 'bowser';
+            canvas.appendChild(bowser);
+            
+            const finishLine = document.createElement('div');
+            finishLine.style.position = 'absolute';
+            finishLine.style.top = '100px';
+            finishLine.style.width = '100%';
+            finishLine.style.borderTop = '5px dashed white';
+            canvas.appendChild(finishLine);
+
+            let progress = 10;
+            let isMoving = false;
+            let bowserAngry = false;
+            let bowserTimer = 0;
+
+            document.body.ontouchstart = () => isMoving = true;
+            document.body.ontouchend = () => isMoving = false;
+
+            function loop() {
+                if(isGameOver) return;
+                
+                // 庫巴邏輯
+                bowserTimer++;
+                if(bowserTimer % 150 === 0) {
+                    bowserAngry = !bowserAngry;
+                    bowser.classList.toggle('angry', bowserAngry);
+                    // 庫巴轉身時重置 timer 隨機一點
+                    bowserTimer = Math.floor(Math.random() * 50); 
+                }
+
+                // 玩家移動
+                if(isMoving) {
+                    if(bowserAngry) {
+                        gameFail();
+                        return;
+                    }
+                    progress += 0.5;
+                    yoshi.style.bottom = progress + '%';
+                }
+
+                if(progress >= 80) gameWin();
+                else gameLoopId = requestAnimationFrame(loop);
+            }
+            loop();
+        }
+
+        // --- 輔助：建立耀西 DOM ---
+        function createYoshi(x, y) {
+            const el = document.createElement('div');
+            el.className = 'yoshi';
+            el.innerHTML = `
+                <div class="yoshi-head"></div>
+                <div class="yoshi-nose"></div>
+                <div class="yoshi-body"></div>
+                <div class="yoshi-cheek"></div>
+                <div class="yoshi-shell"></div>
+                <div class="yoshi-boots"></div>
+            `;
+            // 如果 x, y 是百分比或 px
+            if(x) el.style.left = x + '%';
+            if(y) el.style.top = y + 'px';
+            canvas.appendChild(el);
+            return el;
+        }
+
+        // --- 最終驚喜：蛋糕動畫 ---
+        function startCakeScene() {
+            document.getElementById('game-container').innerHTML = `
+                <div id="cake-scene" style="width:100%; height:100%;">
+                    <div class="cake-container">
+                        <div class="candle"><div class="flame"></div></div>
+                        <div class="cake-base">
+                            <div class="cake-spot" style="top:20px; left:20px;"></div>
+                            <div class="cake-spot" style="top:50px; left:80px;"></div>
+                            <div class="cake-spot" style="top:10px; right:30px;"></div>
+                        </div>
+                    </div>
+                    <div class="message-jp">
+                        阿癱<br>
+                        お誕生日おめでとう！
+                    </div>
+                </div>
+            `;
+            
+            // 簡易的 CSS 彩帶效果 (直接用 JS 生成 DOM)
+            for(let i=0; i<50; i++) {
+                let conf = document.createElement('div');
+                conf.style.position = 'absolute';
+                conf.style.width = '10px';
+                conf.style.height = '10px';
+                conf.style.background = ['#FFC107', '#2196F3', '#F44336', '#4CAF50'][Math.floor(Math.random()*4)];
+                conf.style.left = Math.random() * 100 + '%';
+                conf.style.top = -10 + 'px';
+                conf.style.transition = `top ${Math.random()*2+2}s ease-in, transform 2s linear`;
+                document.getElementById('cake-scene').appendChild(conf);
+                
+                setTimeout(() => {
+                    conf.style.top = '110%';
+                    conf.style.transform = `rotate(${Math.random()*360}deg)`;
+                }, 100);
+            }
+        }
+
+        // 啟動
+        init();
+
+    </script>
+</body>
+</html>
